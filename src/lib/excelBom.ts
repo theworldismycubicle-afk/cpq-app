@@ -4,7 +4,7 @@ import { lineExtendedPrice, subcomponentMaterialTotal, subcomponentLaborCost, su
 
 // Level 1 = Equipment Step, Level 2 = Subcomponent, Level 3 = Part.
 const HEADERS = [
-  'Level', 'Step #', 'Step Name', 'Group', 'Sub #', 'Sub Name',
+  'Level', 'Work Ticket #', 'Work Ticket Name', 'Group', 'Step #', 'Step Name',
   'Part Number', 'Description', 'Qty', 'Unit Price', 'Price Source',
   'Labor Hours', 'Labor Code', 'Labor Rate', 'Markup %',
   'Ext Price', 'Sell Price', 'Price Updated', 'Price Locked', 'Activity Code',

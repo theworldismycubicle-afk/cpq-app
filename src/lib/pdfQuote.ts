@@ -104,7 +104,7 @@ export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
     }
 
     newPageIfNeeded(18);
-    page.drawText('Step Subtotal:', { x: col.markup, y, size: 9, font: fontItalic, color: rgb(0.35, 0.35, 0.35) });
+    page.drawText('Work Ticket Subtotal:', { x: col.markup, y, size: 9, font: fontItalic, color: rgb(0.35, 0.35, 0.35) });
     page.drawText(formatCurrency(stepSellPrice(step, quote.defaultMarkupPct)), {
       x: col.sell,
       y,

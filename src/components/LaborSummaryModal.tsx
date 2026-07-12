@@ -25,7 +25,7 @@ export function LaborSummaryModal({ open, onClose }: Props) {
 
         <div className="parts-modal-body">
           {summary.perStep.length === 0 ? (
-            <div className="parts-empty">No steps in this quote yet.</div>
+            <div className="parts-empty">No work tickets in this quote yet.</div>
           ) : (
             <>
               {summary.perStep.map((step) => (

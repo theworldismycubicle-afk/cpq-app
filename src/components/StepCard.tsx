@@ -40,7 +40,7 @@ export function StepCard({ step, defaultMarkupPct }: Props) {
           {collapsed ? '▸' : '▾'}
         </button>
         <div className="field">
-          Step #
+          Work Ticket #
           <input
             type="number"
             className="step-number"

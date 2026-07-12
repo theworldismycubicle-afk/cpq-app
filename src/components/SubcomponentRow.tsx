@@ -32,13 +32,16 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
         >
           {collapsed ? '▸' : '▾'}
         </button>
-        <input
-          type="text"
-          className="sub-number"
-          value={sub.number}
-          placeholder="#"
-          onChange={(e) => updateSubcomponent(stepId, sub.id, { number: e.target.value })}
-        />
+        <div className="field">
+          Step #
+          <input
+            type="text"
+            className="sub-number"
+            value={sub.number}
+            placeholder="#"
+            onChange={(e) => updateSubcomponent(stepId, sub.id, { number: e.target.value })}
+          />
+        </div>
         <input
           type="text"
           value={sub.name}
