@@ -10,8 +10,11 @@ services:
     name: cpq-app
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    # --include=dev keeps tsx/prisma/vite (devDependencies) available for build AND
+    # the runtime start command, even though Render sets NODE_ENV=production.
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
