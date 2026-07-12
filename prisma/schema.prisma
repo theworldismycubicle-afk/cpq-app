@@ -1,0 +1,53 @@
+// Postgres schema for the CPQ app. `prisma generate` builds the typed client;
+// `prisma migrate deploy` applies migrations (run automatically on Render start).
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// Price list — one row per purchasable part. Looked up by partNumber during BOM builds.
+model Part {
+  id          String   @id @default(cuid())
+  partNumber  String   @unique
+  description String   @default("")
+  unitPrice   Float    @default(0)
+  category    String?
+  /// YYYY-MM-DD the price was last confirmed (matches the existing app model).
+  lastUpdated String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Labor rate table — hourly rate per activity code.
+model LaborRate {
+  code        String   @id
+  description String   @default("")
+  rate        Float    @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+/// Saved quotes. Queryable columns up top; the full nested quote document lives in `data` (JSONB).
+model Quote {
+  id          String   @id
+  quoteNumber String   @default("")
+  customer    String   @default("")
+  date        String   @default("")
+  data        Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+/// Singleton key/value store for app-wide config docs: the assembler rules,
+/// the H2S system rules, and the working "autosave" draft. Key is the doc name.
+model AppConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
