@@ -55,8 +55,10 @@ export default function App() {
         onOpenAssembler={() => setAssemblerOpen(true)}
         autosaveLabel={autosaveLabel}
       />
-      <QuoteHeader />
-      <BomTable />
+      <div className="main">
+        <QuoteHeader />
+        <BomTable />
+      </div>
       <datalist id="known-part-numbers">
         {priceListEntries.map((e) => (
           <option key={e.partNumber} value={e.partNumber} />
