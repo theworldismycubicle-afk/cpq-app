@@ -6,6 +6,7 @@ import { writeBomWorkbookBuffer, readBomWorkbookFromBuffer, writeStepSummaryBuff
 import { readPriceListFromBuffer } from '../lib/excelPriceList';
 import { buildQuotePdf } from '../lib/pdfQuote';
 import { saveQuoteToLibrary } from '../lib/idb';
+import { api } from '../lib/api';
 import { newQuote } from '../../shared/types';
 
 interface Props {
@@ -61,7 +62,7 @@ export function Toolbar({
   };
 
   const handleExportPdf = async () => {
-    const bytes = await buildQuotePdf(quote);
+    const bytes = await buildQuotePdf(quote, await api.computeQuote(quote));
     const fileName = `${quote.quoteNumber || 'quote'}.pdf`;
     downloadBlob(bytes, fileName, PDF_MIME);
     setStatus(`Downloaded ${fileName}`);
@@ -78,14 +79,14 @@ export function Toolbar({
   };
 
   const handleExportBom = async () => {
-    const buffer = await writeBomWorkbookBuffer(quote);
+    const buffer = await writeBomWorkbookBuffer(quote, await api.computeQuote(quote));
     const fileName = `${quote.quoteNumber || 'bom'}.xlsx`;
     downloadBlob(buffer, fileName, XLSX_MIME);
     setStatus(`Downloaded ${fileName}`);
   };
 
   const handleExportStepSummary = async () => {
-    const buffer = await writeStepSummaryBuffer(quote.steps);
+    const buffer = await writeStepSummaryBuffer(quote.steps, await api.computeQuote(quote));
     const fileName = `${quote.quoteNumber || 'quote'}-step-summary.xlsx`;
     downloadBlob(buffer, fileName, XLSX_MIME);
     setStatus(`Downloaded ${fileName}`);

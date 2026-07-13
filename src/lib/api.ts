@@ -7,6 +7,7 @@ import type { PriceListEntry } from './excelPriceList';
 import type { LaborRateEntry } from '../../shared/types';
 import type { AssemblerConfig } from '../../shared/assembler';
 import type { H2sSystemConfig } from '../../shared/h2sSystem';
+import type { ComputedQuote } from '../../shared/computed';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -81,6 +82,15 @@ export const api = {
   },
   deleteQuote(id: string): Promise<void> {
     return request<void>(`/quotes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  // ---- Pricing (computed server-side; formulas never reach the client) ----
+  computeQuote(quote: Quote): Promise<ComputedQuote> {
+    return request<ComputedQuote>('/compute', {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify(quote),
+    });
   },
 
   // ---- Config docs (assembler / h2s / autosave) ----

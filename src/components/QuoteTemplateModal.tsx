@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 import { buildQuotePdf } from '../lib/pdfQuote';
+import { api } from '../lib/api';
 import { downloadBlob } from '../lib/browserFileIO';
 
 interface Props {
@@ -18,7 +19,7 @@ export function QuoteTemplateModal({ open, onClose }: Props) {
     if (!open) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const bytes = await buildQuotePdf(quote);
+      const bytes = await buildQuotePdf(quote, await api.computeQuote(quote));
       if (cancelled) return;
       const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -46,7 +47,7 @@ export function QuoteTemplateModal({ open, onClose }: Props) {
   const t = quote.template;
 
   const handleDownload = async () => {
-    const bytes = await buildQuotePdf(quote);
+    const bytes = await buildQuotePdf(quote, await api.computeQuote(quote));
     downloadBlob(bytes, `${quote.quoteNumber || 'quote'}.pdf`, 'application/pdf');
   };
 

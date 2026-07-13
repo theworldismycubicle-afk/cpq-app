@@ -1,7 +1,8 @@
 import type { PartLine } from '../../shared/types';
-import { lineExtendedPrice, formatCurrency } from '../../shared/calculations';
+import { formatCurrency } from '../../shared/computed';
 import { useQuoteStore } from '../store/quoteStore';
 import { usePriceListStore } from '../store/priceListStore';
+import { useComputedStore } from '../store/computedStore';
 
 interface Props {
   stepId: string;
@@ -14,6 +15,7 @@ export function PartLineRow({ stepId, subId, part }: Props) {
   const removePartLine = useQuoteStore((s) => s.removePartLine);
   const acceptPendingListPrice = useQuoteStore((s) => s.acceptPendingListPrice);
   const lookupPriceList = usePriceListStore((s) => s.lookup);
+  const extPrice = useComputedStore((s) => s.computed.lines[part.id] ?? 0);
 
   const isManual = part.priceSource === 'manual';
   const displayedPrice = isManual && part.manualPriceOverride !== undefined ? part.manualPriceOverride : part.unitPrice;
@@ -111,7 +113,7 @@ export function PartLineRow({ stepId, subId, part }: Props) {
       <td className="updated-cell" title="Date this price was last updated in the parts list">
         {isManual ? 'manual' : lastUpdated || '—'}
       </td>
-      <td>{formatCurrency(lineExtendedPrice(part))}</td>
+      <td>{formatCurrency(extPrice)}</td>
       <td>
         <button className="remove-line" title="Remove line" onClick={() => removePartLine(stepId, subId, part.id)}>
           ✕

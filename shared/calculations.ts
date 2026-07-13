@@ -1,4 +1,9 @@
 import type { PartLine, Subcomponent, EquipmentStep, Quote } from './types';
+import type { LaborCodeTotal, StepLaborSummary, LaborSummary } from './computed';
+
+// NOTE: this module holds the pricing/markup FORMULAS and is imported only by the
+// server (server/calc.ts). Keep it out of client imports so the logic never ships
+// in the browser bundle. Presentation helpers (formatCurrency) live in ./computed.
 
 export function lineExtendedPrice(line: PartLine): number {
   return line.qty * effectiveUnitPrice(line);
@@ -55,28 +60,6 @@ export function groupStepTotals(quote: Quote): { groupName: string | null; steps
   }));
 }
 
-export interface LaborCodeTotal {
-  code: string;
-  hours: number;
-  cost: number;
-}
-
-export interface StepLaborSummary {
-  stepId: string;
-  stepNumber: number;
-  name: string;
-  byCode: LaborCodeTotal[];
-  totalHours: number;
-  totalCost: number;
-}
-
-export interface LaborSummary {
-  perStep: StepLaborSummary[];
-  totals: LaborCodeTotal[];
-  grandHours: number;
-  grandCost: number;
-}
-
 function addToCodeMap(map: Map<string, LaborCodeTotal>, code: string, hours: number, cost: number) {
   const key = code || '(none)';
   const cur = map.get(key) ?? { code: key, hours: 0, cost: 0 };
@@ -116,8 +99,4 @@ export function laborSummary(quote: Quote): LaborSummary {
     grandHours: totals.reduce((s, c) => s + c.hours, 0),
     grandCost: totals.reduce((s, c) => s + c.cost, 0),
   };
-}
-
-export function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }

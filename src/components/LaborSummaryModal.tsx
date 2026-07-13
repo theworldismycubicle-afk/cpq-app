@@ -1,5 +1,5 @@
-import { useQuoteStore } from '../store/quoteStore';
-import { laborSummary, formatCurrency } from '../../shared/calculations';
+import { formatCurrency } from '../../shared/computed';
+import { useComputedStore } from '../store/computedStore';
 
 interface Props {
   open: boolean;
@@ -7,11 +7,9 @@ interface Props {
 }
 
 export function LaborSummaryModal({ open, onClose }: Props) {
-  const quote = useQuoteStore((s) => s.quote);
+  const summary = useComputedStore((s) => s.computed.labor);
 
   if (!open) return null;
-
-  const summary = laborSummary(quote);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

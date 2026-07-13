@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { newQuote, newStep, newSubcomponent, newPartLine, type Quote, type EquipmentStep, type Subcomponent, type PartLine } from '../../shared/types';
-import { lineExtendedPrice, subcomponentMaterialTotal, subcomponentLaborCost, subcomponentMarkupPct, subcomponentSellPrice } from '../../shared/calculations';
+import type { ComputedQuote } from '../../shared/computed';
 
 // Level 1 = Equipment Step, Level 2 = Subcomponent, Level 3 = Part.
 const HEADERS = [
@@ -14,7 +14,7 @@ const HEADERS = [
 const STEP_SUMMARY_HEADERS = ['WORK TICKET', 'DESCRIPTION', 'ACTIVITY CODE', 'BUDGET LABOR', 'BUDGET MATERIAL', 'LABOR HOURS'];
 
 /** Exports a step-level summary (one row per step) matching the ERP budget-import template. */
-export async function writeStepSummaryBuffer(steps: EquipmentStep[]): Promise<ArrayBuffer> {
+export async function writeStepSummaryBuffer(steps: EquipmentStep[], computed: ComputedQuote): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
   const sheet = wb.addWorksheet('Step Summary');
   sheet.addRow(STEP_SUMMARY_HEADERS);
@@ -26,9 +26,10 @@ export async function writeStepSummaryBuffer(steps: EquipmentStep[]): Promise<Ar
     let materialCost = 0;
     const codes: string[] = [];
     for (const sub of step.subcomponents) {
+      const m = computed.subs[sub.id];
       laborHours += sub.laborHours;
-      laborCost += subcomponentLaborCost(sub);
-      materialCost += subcomponentMaterialTotal(sub);
+      laborCost += m?.labor ?? 0;
+      materialCost += m?.material ?? 0;
       if (sub.laborHours > 0 && sub.laborCode && !codes.includes(sub.laborCode)) codes.push(sub.laborCode);
     }
     const activityCode = step.activityCode || codes.join(', ');
@@ -45,7 +46,7 @@ export async function writeStepSummaryBuffer(steps: EquipmentStep[]): Promise<Ar
   return buffer as ArrayBuffer;
 }
 
-export async function writeBomWorkbookBuffer(quote: Quote): Promise<ArrayBuffer> {
+export async function writeBomWorkbookBuffer(quote: Quote, computed: ComputedQuote): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
 
   // Quote Info sheet: header fields so a re-imported BOM restores the quote header.
@@ -69,20 +70,20 @@ export async function writeBomWorkbookBuffer(quote: Quote): Promise<ArrayBuffer>
   info.getColumn(1).width = 26;
   info.getColumn(2).width = 40;
 
-  writeBomSheet(wb, quote.steps, quote.defaultMarkupPct);
+  writeBomSheet(wb, quote.steps, computed);
   const buffer = await wb.xlsx.writeBuffer();
   return buffer as ArrayBuffer;
 }
 
 /** Writes a workbook containing just the BOM sheet for the given steps (no Quote Info header). */
-export async function writeStepsBuffer(steps: EquipmentStep[], defaultMarkupPct: number): Promise<ArrayBuffer> {
+export async function writeStepsBuffer(steps: EquipmentStep[], computed: ComputedQuote): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
-  writeBomSheet(wb, steps, defaultMarkupPct);
+  writeBomSheet(wb, steps, computed);
   const buffer = await wb.xlsx.writeBuffer();
   return buffer as ArrayBuffer;
 }
 
-function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], defaultMarkupPct: number): void {
+function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], computed: ComputedQuote): void {
   const sheet = wb.addWorksheet('BOM');
   sheet.addRow(HEADERS);
   sheet.getRow(1).font = { bold: true };
@@ -96,13 +97,13 @@ function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], defaultMark
       step.activityCode ?? '',
     ]);
     for (const sub of step.subcomponents) {
-      const markup = subcomponentMarkupPct(sub, defaultMarkupPct);
+      const m = computed.subs[sub.id];
       sheet.addRow([
         2, '', '', '', sub.number, sub.name,
         '', '', '', '', '',
-        sub.laborHours, sub.laborCode, sub.laborRate, markup,
-        subcomponentMaterialTotal(sub) + subcomponentLaborCost(sub),
-        subcomponentSellPrice(sub, defaultMarkupPct),
+        sub.laborHours, sub.laborCode, sub.laborRate, m?.markupPct ?? 0,
+        m?.cost ?? 0,
+        m?.sell ?? 0,
       ]);
       for (const part of sub.parts) {
         sheet.addRow([
@@ -111,7 +112,7 @@ function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], defaultMark
           part.priceSource === 'manual' && part.manualPriceOverride !== undefined ? part.manualPriceOverride : part.unitPrice,
           part.priceSource,
           '', '', '', '',
-          lineExtendedPrice(part), '',
+          computed.lines[part.id] ?? 0, '',
           part.priceSource === 'manual' ? '' : (part.priceUpdatedAt ?? ''),
           part.priceLocked ? 'Yes' : '',
         ]);

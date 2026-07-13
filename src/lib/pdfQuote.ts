@@ -1,15 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type RGB } from 'pdf-lib';
 import type { Quote } from '../../shared/types';
-import {
-  subcomponentSellPrice,
-  subcomponentMaterialTotal,
-  subcomponentLaborCost,
-  subcomponentMarkupPct,
-  stepSellPrice,
-  groupStepTotals,
-  quoteGrandTotal,
-  formatCurrency,
-} from '../../shared/calculations';
+import { formatCurrency, type ComputedQuote } from '../../shared/computed';
 
 const PAGE_WIDTH = 612; // US Letter
 const PAGE_HEIGHT = 792;
@@ -24,7 +15,7 @@ function hexToRgb(hex: string): RGB {
   return rgb(r, g, b);
 }
 
-export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
+export async function buildQuotePdf(quote: Quote, computed: ComputedQuote): Promise<Uint8Array> {
   const t = quote.template;
   const accent = hexToRgb(t.accentColorHex);
 
@@ -89,10 +80,11 @@ export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
 
     for (const sub of step.subcomponents) {
       newPageIfNeeded(18);
-      const material = subcomponentMaterialTotal(sub);
-      const labor = subcomponentLaborCost(sub);
-      const sell = subcomponentSellPrice(sub, quote.defaultMarkupPct);
-      const markupPct = subcomponentMarkupPct(sub, quote.defaultMarkupPct);
+      const m = computed.subs[sub.id];
+      const material = m?.material ?? 0;
+      const labor = m?.labor ?? 0;
+      const sell = m?.sell ?? 0;
+      const markupPct = m?.markupPct ?? 0;
       const label = sub.number ? `   ${sub.number}  ${sub.name}` : `   ${sub.name}`;
 
       page.drawText(label, { x: col.name, y, size: 10, font });
@@ -105,7 +97,7 @@ export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
 
     newPageIfNeeded(18);
     page.drawText('Work Ticket Subtotal:', { x: col.markup, y, size: 9, font: fontItalic, color: rgb(0.35, 0.35, 0.35) });
-    page.drawText(formatCurrency(stepSellPrice(step, quote.defaultMarkupPct)), {
+    page.drawText(formatCurrency(computed.steps[step.id]?.sell ?? 0), {
       x: col.sell,
       y,
       size: 9,
@@ -116,7 +108,7 @@ export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
   }
 
   // Combined group subtotals (only shown when at least one step has a group assigned)
-  const groups = groupStepTotals(quote).filter((g) => g.groupName !== null);
+  const groups = computed.groups.filter((g) => g.groupName !== null);
   if (groups.length > 0) {
     newPageIfNeeded(20 + groups.length * 16);
     page.drawLine({
@@ -130,7 +122,7 @@ export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
     y -= 18;
     for (const g of groups) {
       newPageIfNeeded(16);
-      page.drawText(`${g.groupName} (${g.steps.map((s) => s.name).join(', ')})`, { x: col.name, y, size: 10, font });
+      page.drawText(`${g.groupName} (${g.stepNames.join(', ')})`, { x: col.name, y, size: 10, font });
       page.drawText(formatCurrency(g.total), { x: col.sell, y, size: 10, font: fontBold });
       y -= 16;
     }
@@ -147,7 +139,7 @@ export async function buildQuotePdf(quote: Quote): Promise<Uint8Array> {
   });
   y -= 20;
   page.drawText('Grand Total:', { x: col.markup, y, size: 13, font: fontBold, color: accent });
-  page.drawText(formatCurrency(quoteGrandTotal(quote)), { x: col.sell, y, size: 13, font: fontBold, color: accent });
+  page.drawText(formatCurrency(computed.grandTotal), { x: col.sell, y, size: 13, font: fontBold, color: accent });
 
   y -= 40;
   newPageIfNeeded(60);

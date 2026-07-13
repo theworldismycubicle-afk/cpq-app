@@ -1,8 +1,9 @@
 import type { Subcomponent } from '../../shared/types';
-import { subcomponentMaterialTotal, subcomponentLaborCost, subcomponentSellPrice, subcomponentMarkupPct, formatCurrency } from '../../shared/calculations';
+import { formatCurrency } from '../../shared/computed';
 import { useQuoteStore } from '../store/quoteStore';
 import { useLaborRatesStore } from '../store/laborRatesStore';
 import { useUiStore } from '../store/uiStore';
+import { useComputedStore } from '../store/computedStore';
 import { PartLineRow } from './PartLineRow';
 
 interface Props {
@@ -18,8 +19,10 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
   const laborRates = useLaborRatesStore((s) => s.rates);
   const collapsed = useUiStore((s) => !!s.collapsedSubs[sub.id]);
   const toggleSub = useUiStore((s) => s.toggleSub);
+  const money = useComputedStore((s) => s.computed.subs[sub.id]);
 
-  const markup = subcomponentMarkupPct(sub, defaultMarkupPct);
+  // "Which markup applies" is a trivial input value, not the sensitive markup math.
+  const markup = sub.markupOverride !== undefined ? sub.markupOverride : defaultMarkupPct;
   const isOverridden = sub.markupOverride !== undefined;
 
   return (
@@ -104,8 +107,8 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
 
         <div className="totals">
           {collapsed && <span className="collapse-count">{sub.parts.length} parts · </span>}
-          Material {formatCurrency(subcomponentMaterialTotal(sub))} · Labor{' '}
-          {formatCurrency(subcomponentLaborCost(sub))} · Sell {formatCurrency(subcomponentSellPrice(sub, defaultMarkupPct))}
+          Material {formatCurrency(money?.material ?? 0)} · Labor{' '}
+          {formatCurrency(money?.labor ?? 0)} · Sell {formatCurrency(money?.sell ?? 0)}
         </div>
 
         <button className="remove-btn" onClick={() => removeSubcomponent(stepId, sub.id)}>

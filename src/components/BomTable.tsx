@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 import { useUiStore } from '../store/uiStore';
+import { useComputedStore } from '../store/computedStore';
 import { StepCard } from './StepCard';
-import { quoteGrandTotal, groupStepTotals, formatCurrency } from '../../shared/calculations';
+import { formatCurrency } from '../../shared/computed';
 import { readStepsFromBuffer } from '../lib/excelBom';
 import { saveQuoteToLibrary } from '../lib/idb';
 import { pickFile } from '../lib/browserFileIO';
@@ -13,6 +14,7 @@ export function BomTable() {
   const appendSteps = useQuoteStore((s) => s.appendSteps);
   const collapseAll = useUiStore((s) => s.collapseAll);
   const expandAll = useUiStore((s) => s.expandAll);
+  const computed = useComputedStore((s) => s.computed);
   const [saveMsg, setSaveMsg] = useState('');
 
   const handleSaveQuote = async () => {
@@ -31,7 +33,7 @@ export function BomTable() {
     collapseAll(stepIds, subIds);
   };
 
-  const groups = groupStepTotals(quote);
+  const groups = computed.groups;
   const hasGroups = groups.some((g) => g.groupName !== null);
 
   const handleImportStep = async () => {
@@ -67,10 +69,10 @@ export function BomTable() {
         {hasGroups && (
           <div className="group-summary">
             <h4>Subtotals</h4>
-            {groups.map((g) => (
-              <div key={g.groupName ?? g.steps[0]?.id} className="group-summary-row">
+            {groups.map((g, i) => (
+              <div key={g.groupName ?? g.stepNames[0] ?? i} className="group-summary-row">
                 <span>
-                  {g.groupName ?? g.steps[0]?.name} {g.groupName && `(${g.steps.map((s) => s.name).join(', ')})`}
+                  {g.groupName ?? g.stepNames[0]} {g.groupName && `(${g.stepNames.join(', ')})`}
                 </span>
                 <span>{formatCurrency(g.total)}</span>
               </div>
@@ -80,7 +82,7 @@ export function BomTable() {
       </div>
       <div className="grand-total-bar">
         <span>Grand Total:</span>
-        <span>{formatCurrency(quoteGrandTotal(quote))}</span>
+        <span>{formatCurrency(computed.grandTotal)}</span>
         {saveMsg && <span className="grand-total-savemsg">{saveMsg}</span>}
         <button className="grand-total-save" onClick={handleSaveQuote}>💾 Save Quote</button>
       </div>

@@ -1,8 +1,10 @@
 import type { EquipmentStep } from '../../shared/types';
-import { stepSellPrice, formatCurrency } from '../../shared/calculations';
+import { formatCurrency } from '../../shared/computed';
 import { useQuoteStore } from '../store/quoteStore';
 import { useUiStore } from '../store/uiStore';
+import { useComputedStore } from '../store/computedStore';
 import { SubcomponentRow } from './SubcomponentRow';
+import { api } from '../lib/api';
 import { writeStepsBuffer } from '../lib/excelBom';
 import { downloadBlob } from '../lib/browserFileIO';
 
@@ -19,12 +21,15 @@ export function StepCard({ step, defaultMarkupPct }: Props) {
   const addSubcomponent = useQuoteStore((s) => s.addSubcomponent);
   const collapsed = useUiStore((s) => !!s.collapsedSteps[step.id]);
   const toggleStep = useUiStore((s) => s.toggleStep);
+  const stepSell = useComputedStore((s) => s.computed.steps[step.id]?.sell ?? 0);
 
   const subCount = step.subcomponents.length;
   const partCount = step.subcomponents.reduce((n, sub) => n + sub.parts.length, 0);
 
   const handleExportStep = async () => {
-    const buffer = await writeStepsBuffer([step], defaultMarkupPct);
+    // Compute this step's pricing on the server, then build the workbook from those numbers.
+    const computed = await api.computeQuote({ ...useQuoteStore.getState().quote, steps: [step], defaultMarkupPct });
+    const buffer = await writeStepsBuffer([step], computed);
     const safeName = (step.name || 'step').replace(/[^a-z0-9_-]+/gi, '_');
     downloadBlob(buffer, `${safeName}.xlsx`, XLSX_MIME);
   };
@@ -67,7 +72,7 @@ export function StepCard({ step, defaultMarkupPct }: Props) {
 
         <div className="totals step-total">
           {collapsed && <span className="collapse-count">{subCount} sub · {partCount} parts · </span>}
-          Step Sell Price: {formatCurrency(stepSellPrice(step, defaultMarkupPct))}
+          Step Sell Price: {formatCurrency(stepSell)}
         </div>
 
         <button className="step-export-btn" title="Export this step to Excel" onClick={handleExportStep}>
