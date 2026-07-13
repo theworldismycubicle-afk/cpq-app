@@ -1,5 +1,5 @@
 import type { EquipmentStep } from '../../shared/types';
-import { formatCurrency } from '../../shared/computed';
+import { formatCurrency, formatTicketNo } from '../../shared/computed';
 import { useQuoteStore } from '../store/quoteStore';
 import { useUiStore } from '../store/uiStore';
 import { useComputedStore } from '../store/computedStore';
@@ -47,10 +47,11 @@ export function StepCard({ step, defaultMarkupPct }: Props) {
         <div className="field">
           Work Ticket #
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             className="step-number"
-            value={step.stepNumber}
-            onChange={(e) => updateStep(step.id, { stepNumber: Number(e.target.value) })}
+            value={formatTicketNo(step.stepNumber)}
+            onChange={(e) => updateStep(step.id, { stepNumber: Number(e.target.value.replace(/\D/g, '')) || 0 })}
           />
         </div>
         <input
@@ -79,7 +80,7 @@ export function StepCard({ step, defaultMarkupPct }: Props) {
           Export Step
         </button>
         <button className="remove-btn" onClick={() => removeStep(step.id)}>
-          Delete Equipment Step
+          Delete Work Ticket Step
         </button>
       </div>
 

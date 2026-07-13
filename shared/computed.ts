@@ -67,3 +67,8 @@ export const EMPTY_COMPUTED: ComputedQuote = {
 export function formatCurrency(n: number): string {
   return (n ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
+
+/** Work-ticket number display: zero-padded to at least 3 digits (1 → "001", 114 → "114"). */
+export function formatTicketNo(n: number): string {
+  return String(n ?? 0).padStart(3, '0');
+}

@@ -108,7 +108,7 @@ export function Toolbar({
     <nav className="sidebar">
       <div className="sidebar-brand">
         <span className="sidebar-logo">▧</span>
-        <span className="sidebar-title">Vessel CPQ</span>
+        <span className="sidebar-title">CPQ</span>
       </div>
 
       <SideGroup title="Quote" icon="📄" open={open.quote} onToggle={() => toggle('quote')}>

@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type RGB } from 'pdf-lib';
 import type { Quote } from '../../shared/types';
-import { formatCurrency, type ComputedQuote } from '../../shared/computed';
+import { formatCurrency, formatTicketNo, type ComputedQuote } from '../../shared/computed';
 
 const PAGE_WIDTH = 612; // US Letter
 const PAGE_HEIGHT = 792;
@@ -75,7 +75,7 @@ export async function buildQuotePdf(quote: Quote, computed: ComputedQuote): Prom
 
   for (const step of quote.steps) {
     newPageIfNeeded(20);
-    page.drawText(`${step.stepNumber}. ${step.name}`, { x: col.name, y, size: 11, font: fontBold });
+    page.drawText(`${formatTicketNo(step.stepNumber)}. ${step.name}`, { x: col.name, y, size: 11, font: fontBold });
     y -= 16;
 
     for (const sub of step.subcomponents) {

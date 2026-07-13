@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../shared/computed';
+import { formatCurrency, formatTicketNo } from '../../shared/computed';
 import { useComputedStore } from '../store/computedStore';
 
 interface Props {
@@ -29,7 +29,7 @@ export function LaborSummaryModal({ open, onClose }: Props) {
               {summary.perStep.map((step) => (
                 <div key={step.stepId} className="labor-step-block">
                   <div className="labor-step-title">
-                    {step.stepNumber}. {step.name || '(unnamed)'}
+                    {formatTicketNo(step.stepNumber)}. {step.name || '(unnamed)'}
                     <span className="labor-step-total">
                       {step.totalHours.toLocaleString()} hrs · {formatCurrency(step.totalCost)}
                     </span>

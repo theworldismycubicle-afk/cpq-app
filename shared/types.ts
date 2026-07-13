@@ -57,8 +57,8 @@ export interface QuoteTemplate {
 
 export const DEFAULT_QUOTE_TEMPLATE: QuoteTemplate = {
   companyName: 'Your Company Name',
-  companySubtitle: 'Stainless Steel Vessel Fabrication',
-  headerTitle: 'Stainless Steel Vessel Quote',
+  companySubtitle: '',
+  headerTitle: 'Quote',
   termsText: 'This quote is valid for {validDays} days from the date above. Pricing subject to change based on final specifications.',
   validDays: 30,
   showMaterialColumn: true,
@@ -115,7 +115,7 @@ export function newSubcomponent(name = 'New Subcomponent', number = ''): Subcomp
   };
 }
 
-export function newStep(name = 'New Equipment Step', stepNumber = 1): EquipmentStep {
+export function newStep(name = 'New Work Ticket', stepNumber = 1): EquipmentStep {
   return {
     id: cryptoRandomId(),
     stepNumber,

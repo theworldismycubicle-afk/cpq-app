@@ -55,7 +55,7 @@ export function BomTable() {
           <StepCard key={step.id} step={step} defaultMarkupPct={quote.defaultMarkupPct} />
         ))}
         <div className="step-actions-row">
-          <button onClick={addStep}>+ Add Equipment Step</button>
+          <button onClick={addStep}>+ Add Work Ticket Step</button>
           <button onClick={handleImportStep}>Import Step from Excel</button>
           {quote.steps.length > 0 && (
             <>

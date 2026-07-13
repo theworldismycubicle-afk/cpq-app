@@ -2,7 +2,7 @@
   "name": "cpq-app",
   "private": true,
   "version": "0.2.0",
-  "description": "CPQ app for pricing stainless steel vessels via multi-level BOM (React client + Express/Postgres API)",
+  "description": "CPQ app: parametric multi-level BOM quoting (React client + Express/Postgres API)",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",

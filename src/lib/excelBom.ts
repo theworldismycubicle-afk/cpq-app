@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { newQuote, newStep, newSubcomponent, newPartLine, type Quote, type EquipmentStep, type Subcomponent, type PartLine } from '../../shared/types';
-import type { ComputedQuote } from '../../shared/computed';
+import { formatTicketNo, type ComputedQuote } from '../../shared/computed';
 
 // Level 1 = Equipment Step, Level 2 = Subcomponent, Level 3 = Part.
 const HEADERS = [
@@ -90,7 +90,7 @@ function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], computed: C
 
   for (const step of steps) {
     sheet.addRow([
-      1, step.stepNumber, step.name, step.groupName ?? '', '', '',
+      1, formatTicketNo(step.stepNumber), step.name, step.groupName ?? '', '', '',
       '', '', '', '', '',
       '', '', '', '',
       '', '', '', '',
