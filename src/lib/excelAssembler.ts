@@ -45,14 +45,14 @@ export async function writeAssemblerConfigBuffer(config: AssemblerConfig): Promi
   }
 
   const comps = wb.addWorksheet('Components');
-  comps.addRow(['Step', 'Step #', 'Subcomponent', 'Sub #', 'Component', 'Type', 'When Param', 'When Value', 'Match Var', 'Match Value', 'Qty', 'Part Number']);
+  comps.addRow(['Work Ticket', 'Work Ticket #', 'Step', 'Step #', 'Component', 'Type', 'When Param', 'When Value', 'Match Var', 'Match Value', 'Qty', 'Part Number']);
   comps.getRow(1).font = { bold: true };
   for (const c of config.components) {
     comps.addRow([c.step, c.stepNumber ?? '', c.subcomponent, c.subNumber ?? '', c.component, c.type, c.whenParam ?? '', c.whenValue ?? '', c.matchVar ?? '', c.matchValue ?? '', c.qty, c.partNumber ?? '']);
   }
 
   const labor = wb.addWorksheet('Labor');
-  labor.addRow(['Step', 'Subcomponent', 'Labor Hours', 'Labor Code']);
+  labor.addRow(['Work Ticket', 'Step', 'Labor Hours', 'Labor Code']);
   labor.getRow(1).font = { bold: true };
   for (const l of config.labor) {
     labor.addRow([l.step, l.subcomponent, l.laborHours, l.laborCode]);

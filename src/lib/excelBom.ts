@@ -11,7 +11,7 @@ const HEADERS = [
 ];
 
 // One row per Equipment Step, totaling labor hours/cost and material cost per step.
-const STEP_SUMMARY_HEADERS = ['STEP', 'DESCRIPTION', 'ACTIVITY CODE', 'BUDGET LABOR', 'BUDGET MATERIAL', 'LABOR HOURS'];
+const STEP_SUMMARY_HEADERS = ['WORK TICKET', 'DESCRIPTION', 'ACTIVITY CODE', 'BUDGET LABOR', 'BUDGET MATERIAL', 'LABOR HOURS'];
 
 /** Exports a step-level summary (one row per step) matching the ERP budget-import template. */
 export async function writeStepSummaryBuffer(steps: EquipmentStep[]): Promise<ArrayBuffer> {

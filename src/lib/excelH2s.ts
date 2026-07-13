@@ -52,7 +52,7 @@ export async function writeH2sConfigBuffer(config: H2sSystemConfig): Promise<Arr
   settings.getColumn(2).width = 18;
 
   const mat = wb.addWorksheet('Material Steps');
-  mat.addRow(['Step #', 'Name', 'Kind', 'Arrangements (comma, blank=all)', 'Component', 'Size Key', 'Part #', 'Qty (number or =formula)']);
+  mat.addRow(['Work Ticket #', 'Name', 'Kind', 'Arrangements (comma, blank=all)', 'Component', 'Size Key', 'Part #', 'Qty (number or =formula)']);
   mat.getRow(1).font = { bold: true };
   for (const m of config.materialSteps) {
     const parts = m.kind === 'parts' ? m.parts ?? [] : [];
@@ -153,7 +153,7 @@ export async function readH2sConfigBuffer(buffer: ArrayBuffer): Promise<H2sSyste
     matSheet.eachRow((row, i) => {
       if (i === 1) return;
       const name = str(row.getCell(2).value);
-      // Continuation row (blank Step #/Name): another part for the current step.
+      // Continuation row (blank Work Ticket #/Name): another part for the current step.
       if (!name) {
         pushPart(row);
         return;
