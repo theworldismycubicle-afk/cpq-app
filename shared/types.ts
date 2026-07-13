@@ -16,6 +16,8 @@ export interface PartLine {
   priceLocked?: boolean;
   /** Set by the BOM Assembler for placeholder lines (e.g. Compressor, HX) that need manual pricing. */
   requiresInput?: boolean;
+  /** Optional P&ID reference tag carried from the BOM (e.g. "VB-302"). */
+  pidRef?: string;
 }
 
 /** A subcomponent within a vessel/step, e.g. "H2S PID" or "H2S Vessel Shell". Carries labor and markup. */
@@ -29,6 +31,8 @@ export interface Subcomponent {
   laborRate: number;
   /** When undefined, the subcomponent inherits the quote's default markup. */
   markupOverride?: number;
+  /** ERP activity code for this Step ('DFLT' for material, e.g. '031' for labor). Drives the Step Summary. */
+  activityCode?: string;
 }
 
 /** A top-level work-order step representing one vessel/piece of equipment, made up of subcomponents. */

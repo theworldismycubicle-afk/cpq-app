@@ -57,6 +57,13 @@ export function PartLineRow({ stepId, subId, part }: Props) {
       <td>
         <input
           type="text"
+          value={part.pidRef ?? ''}
+          onChange={(e) => updatePartLine(stepId, subId, part.id, { pidRef: e.target.value })}
+        />
+      </td>
+      <td>
+        <input
+          type="text"
           value={part.description}
           onChange={(e) => updatePartLine(stepId, subId, part.id, { description: e.target.value })}
         />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 import { useUiStore } from '../store/uiStore';
 import { useComputedStore } from '../store/computedStore';
+import { usePriceListStore } from '../store/priceListStore';
 import { StepCard } from './StepCard';
 import { formatCurrency } from '../../shared/computed';
 import { readStepsFromBuffer } from '../lib/excelBom';
@@ -15,6 +16,7 @@ export function BomTable() {
   const collapseAll = useUiStore((s) => s.collapseAll);
   const expandAll = useUiStore((s) => s.expandAll);
   const computed = useComputedStore((s) => s.computed);
+  const lookupPrice = usePriceListStore((s) => s.lookup);
   const [saveMsg, setSaveMsg] = useState('');
 
   const handleSaveQuote = async () => {
@@ -40,9 +42,13 @@ export function BomTable() {
     const file = await pickFile('.xlsx');
     if (!file) return;
     const buffer = await file.arrayBuffer();
-    const steps = await readStepsFromBuffer(buffer);
+    const priceLookup = (pn: string) => {
+      const e = lookupPrice(pn);
+      return e ? { unitPrice: e.unitPrice, description: e.description, lastUpdated: e.lastUpdated } : undefined;
+    };
+    const steps = await readStepsFromBuffer(buffer, priceLookup);
     if (steps.length === 0) {
-      alert('No equipment step rows found in that file.');
+      alert('No work ticket rows found in that file.');
       return;
     }
     appendSteps(steps);
@@ -56,7 +62,7 @@ export function BomTable() {
         ))}
         <div className="step-actions-row">
           <button onClick={addStep}>+ Add Work Ticket Step</button>
-          <button onClick={handleImportStep}>Import Step from Excel</button>
+          <button onClick={handleImportStep}>Import Work Ticket from Excel</button>
           {quote.steps.length > 0 && (
             <>
               <div style={{ flex: 1 }} />

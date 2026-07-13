@@ -309,7 +309,8 @@ export function generateH2sSystem(
   const count = vesselCount(input.arrangement);
   const sizeFactor =
     (input.vessel.diameterFt * input.vessel.straightSideFt) / (config.refDiameterFt * config.refStraightSideFt);
-  const steps: EquipmentStep[] = [];
+  // One Work Ticket for the whole system; material steps and labor activities are its Steps (subcomponents).
+  const workTicket: EquipmentStep = { ...newStep(`H2S System ${fmtSize(input.vessel)} ${input.grade}`, 1) };
 
   const includedFor = (arrangements?: Arrangement[]) => !arrangements || arrangements.includes(input.arrangement);
 
@@ -325,12 +326,11 @@ export function generateH2sSystem(
     N: count,
   };
 
-  // Material steps
+  // Material steps → Steps (subcomponents) of the work ticket
   let vesselIndex = 0;
   for (const m of config.materialSteps) {
     if (!includedFor(m.arrangements)) continue;
-    const step: EquipmentStep = { ...newStep(m.name, m.stepNumber), activityCode: 'DFLT' };
-    const sub = { ...newSubcomponent(m.name, String(m.stepNumber)) };
+    const sub = { ...newSubcomponent(m.name, String(m.stepNumber)), activityCode: 'DFLT' };
     sub.laborHours = 0;
 
     if (m.kind === 'vessel') {
@@ -402,11 +402,10 @@ export function generateH2sSystem(
       sub.parts.push(part);
     }
 
-    step.subcomponents.push(sub);
-    steps.push(step);
+    workTicket.subcomponents.push(sub);
   }
 
-  // Labor-activity steps
+  // Labor-activity steps → Steps (subcomponents), carrying their activity code
   for (const a of config.laborActivities) {
     if (!includedFor(a.arrangements)) continue;
     let hours = a.baseHours;
@@ -415,14 +414,12 @@ export function generateH2sSystem(
     hours = Math.round(hours);
     if (hours <= 0) continue;
 
-    const step: EquipmentStep = { ...newStep(a.name, Number(a.code)), activityCode: a.code };
-    const sub = { ...newSubcomponent(a.name, a.code) };
+    const sub = { ...newSubcomponent(a.name, a.code), activityCode: a.code };
     sub.laborHours = hours;
     sub.laborCode = a.code;
     sub.laborRate = a.ratePerHour;
-    step.subcomponents.push(sub);
-    steps.push(step);
+    workTicket.subcomponents.push(sub);
   }
 
-  return steps;
+  return [workTicket];
 }

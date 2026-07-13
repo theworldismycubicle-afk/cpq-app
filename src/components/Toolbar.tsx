@@ -39,7 +39,12 @@ export function Toolbar({
   const setQuote = useQuoteStore((s) => s.setQuote);
   const applyPriceList = useQuoteStore((s) => s.applyPriceList);
   const mergePriceListEntries = usePriceListStore((s) => s.mergeEntries);
+  const lookupPrice = usePriceListStore((s) => s.lookup);
   const storedPartCount = usePriceListStore((s) => s.entries.length);
+  const priceLookup = (pn: string) => {
+    const e = lookupPrice(pn);
+    return e ? { unitPrice: e.unitPrice, description: e.description, lastUpdated: e.lastUpdated } : undefined;
+  };
   const [status, setStatus] = useState('');
   const [open, setOpen] = useState<Record<GroupKey, boolean>>({ quote: true, build: true, data: true });
 
@@ -73,9 +78,13 @@ export function Toolbar({
     const file = await pickFile('.xlsx');
     if (!file) return;
     const buffer = await file.arrayBuffer();
-    const imported = await readBomWorkbookFromBuffer(buffer);
+    const imported = await readBomWorkbookFromBuffer(buffer, priceLookup);
     setQuote(imported);
-    setStatus(`Imported BOM from ${file.name}`);
+    const flagged = imported.steps.reduce(
+      (n, wt) => n + wt.subcomponents.reduce((m, s) => m + s.parts.filter((p) => p.requiresInput).length, 0),
+      0,
+    );
+    setStatus(`Imported BOM from ${file.name}${flagged ? ` — ${flagged} part(s) need pricing` : ''}`);
   };
 
   const handleExportBom = async () => {

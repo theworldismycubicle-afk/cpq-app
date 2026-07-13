@@ -52,6 +52,17 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
         />
 
         <div className="field">
+          Activity
+          <input
+            type="text"
+            className="sub-number"
+            placeholder="DFLT"
+            value={sub.activityCode ?? ''}
+            onChange={(e) => updateSubcomponent(stepId, sub.id, { activityCode: e.target.value })}
+          />
+        </div>
+
+        <div className="field">
           Labor Hrs
           <input
             type="number"
@@ -121,13 +132,14 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
       <table className="parts-table">
         <thead>
           <tr>
-            <th style={{ width: '14%' }}>Part Number</th>
-            <th style={{ width: '28%' }}>Description</th>
-            <th style={{ width: '7%' }}>Qty</th>
-            <th style={{ width: '14%' }}>Unit Price</th>
+            <th style={{ width: '12%' }}>Part Number</th>
+            <th style={{ width: '9%' }}>P&amp;ID Ref</th>
+            <th style={{ width: '24%' }}>Description</th>
+            <th style={{ width: '6%' }}>Qty</th>
+            <th style={{ width: '12%' }}>Unit Price</th>
             <th style={{ width: '7%' }}>Source</th>
-            <th style={{ width: '11%' }}>Last Updated</th>
-            <th style={{ width: '13%' }}>Ext Price</th>
+            <th style={{ width: '10%' }}>Last Updated</th>
+            <th style={{ width: '12%' }}>Ext Price</th>
             <th style={{ width: '4%' }}></th>
           </tr>
         </thead>

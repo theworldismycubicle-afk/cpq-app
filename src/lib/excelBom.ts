@@ -2,48 +2,53 @@ import ExcelJS from 'exceljs';
 import { newQuote, newStep, newSubcomponent, newPartLine, type Quote, type EquipmentStep, type Subcomponent, type PartLine } from '../../shared/types';
 import { formatTicketNo, type ComputedQuote } from '../../shared/computed';
 
-// Level 1 = Equipment Step, Level 2 = Subcomponent, Level 3 = Part.
-const HEADERS = [
-  'Level', 'Work Ticket #', 'Work Ticket Name', 'Group', 'Step #', 'Step Name',
-  'Part Number', 'Description', 'Qty', 'Unit Price', 'Price Source',
+/**
+ * Flat BOM layout — ONE ROW PER PART. Grouping columns (Work Ticket #, Step #)
+ * repeat on every row; the step-level fields (name, activity, labor, markup) are
+ * written once on a step's first row. Import groups by Work Ticket # + Step #.
+ */
+const FLAT_HEADERS = [
+  'Work Ticket #', 'Work Ticket Name', 'Step #', 'Step Name', 'Activity Code',
   'Labor Hours', 'Labor Code', 'Labor Rate', 'Markup %',
-  'Ext Price', 'Sell Price', 'Price Updated', 'Price Locked', 'Activity Code',
+  'Part Number', 'P&ID Ref', 'Description', 'Qty', 'Unit Price', 'Ext Price',
 ];
 
-// One row per Equipment Step, totaling labor hours/cost and material cost per step.
-const STEP_SUMMARY_HEADERS = ['WORK TICKET', 'DESCRIPTION', 'ACTIVITY CODE', 'BUDGET LABOR', 'BUDGET MATERIAL', 'LABOR HOURS'];
+// One row per Step (subcomponent), matching the ERP budget-import template.
+const STEP_SUMMARY_HEADERS = ['WORK TICKET', 'STEP', 'DESCRIPTION', 'ACTIVITY CODE', 'BUDGET LABOR', 'BUDGET MATERIAL', 'LABOR HOURS'];
 
-/** Exports a step-level summary (one row per step) matching the ERP budget-import template. */
+/** Which price to display for a line (manual override vs list) — not a secret formula. */
+function effUnitPrice(p: PartLine): number {
+  return p.priceSource === 'manual' && p.manualPriceOverride !== undefined ? p.manualPriceOverride : p.unitPrice;
+}
+
+/** Lookup used to price parts on import (from the price list). */
+export type PriceLookup = (partNumber: string) => { unitPrice: number; description?: string; lastUpdated?: string } | undefined;
+
+/** Exports a Step-level summary (one row per Step/subcomponent) for the ERP budget import. */
 export async function writeStepSummaryBuffer(steps: EquipmentStep[], computed: ComputedQuote): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
   const sheet = wb.addWorksheet('Step Summary');
   sheet.addRow(STEP_SUMMARY_HEADERS);
   sheet.getRow(1).font = { bold: true };
 
-  for (const step of steps) {
-    let laborHours = 0;
-    let laborCost = 0;
-    let materialCost = 0;
-    const codes: string[] = [];
-    for (const sub of step.subcomponents) {
+  for (const wt of steps) {
+    for (const sub of wt.subcomponents) {
       const m = computed.subs[sub.id];
-      laborHours += sub.laborHours;
-      laborCost += m?.labor ?? 0;
-      materialCost += m?.material ?? 0;
-      if (sub.laborHours > 0 && sub.laborCode && !codes.includes(sub.laborCode)) codes.push(sub.laborCode);
+      const activity = sub.activityCode || (sub.laborHours > 0 ? sub.laborCode : 'DFLT');
+      sheet.addRow([
+        formatTicketNo(wt.stepNumber),
+        sub.number,
+        sub.name,
+        activity,
+        m?.labor ?? 0,
+        m?.material ?? 0,
+        sub.laborHours,
+      ]);
     }
-    const activityCode = step.activityCode || codes.join(', ');
-    sheet.addRow([step.stepNumber, step.name, activityCode, laborCost, materialCost, laborHours]);
   }
 
-  sheet.getColumn(1).width = 8;
-  sheet.getColumn(2).width = 32;
-  sheet.getColumn(3).width = 16;
-  sheet.getColumn(4).width = 16;
-  sheet.getColumn(5).width = 16;
-  sheet.getColumn(6).width = 14;
-  const buffer = await wb.xlsx.writeBuffer();
-  return buffer as ArrayBuffer;
+  [10, 10, 30, 14, 14, 14, 12].forEach((w, i) => (sheet.getColumn(i + 1).width = w));
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
 export async function writeBomWorkbookBuffer(quote: Quote, computed: ComputedQuote): Promise<ArrayBuffer> {
@@ -71,169 +76,261 @@ export async function writeBomWorkbookBuffer(quote: Quote, computed: ComputedQuo
   info.getColumn(2).width = 40;
 
   writeBomSheet(wb, quote.steps, computed);
-  const buffer = await wb.xlsx.writeBuffer();
-  return buffer as ArrayBuffer;
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
-/** Writes a workbook containing just the BOM sheet for the given steps (no Quote Info header). */
+/** Workbook containing just the flat BOM sheet for the given work tickets. */
 export async function writeStepsBuffer(steps: EquipmentStep[], computed: ComputedQuote): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook();
   writeBomSheet(wb, steps, computed);
-  const buffer = await wb.xlsx.writeBuffer();
-  return buffer as ArrayBuffer;
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
 function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], computed: ComputedQuote): void {
   const sheet = wb.addWorksheet('BOM');
-  sheet.addRow(HEADERS);
+  sheet.addRow(FLAT_HEADERS);
   sheet.getRow(1).font = { bold: true };
 
-  for (const step of steps) {
-    sheet.addRow([
-      1, formatTicketNo(step.stepNumber), step.name, step.groupName ?? '', '', '',
-      '', '', '', '', '',
-      '', '', '', '',
-      '', '', '', '',
-      step.activityCode ?? '',
-    ]);
-    for (const sub of step.subcomponents) {
+  for (const wt of steps) {
+    const wtNo = formatTicketNo(wt.stepNumber);
+    let wtNameWritten = false;
+    const emitWtName = () => (wtNameWritten ? '' : ((wtNameWritten = true), wt.name));
+
+    if (wt.subcomponents.length === 0) {
+      sheet.addRow([wtNo, wt.name, '', '', '', '', '', '', '', '', '', '', '', '', '']);
+      continue;
+    }
+
+    for (const sub of wt.subcomponents) {
       const m = computed.subs[sub.id];
-      sheet.addRow([
-        2, '', '', '', sub.number, sub.name,
-        '', '', '', '', '',
-        sub.laborHours, sub.laborCode, sub.laborRate, m?.markupPct ?? 0,
-        m?.cost ?? 0,
-        m?.sell ?? 0,
-      ]);
+      let subHeadWritten = false;
+      const stepFields = () =>
+        subHeadWritten
+          ? ['', '', '', '', '']
+          : ((subHeadWritten = true), [sub.name, sub.activityCode ?? '', sub.laborHours, sub.laborCode, sub.laborRate]);
+      const markupCell = () => (subHeadWritten && m ? '' : m?.markupPct ?? '');
+
+      if (sub.parts.length === 0) {
+        const [sName, act, lh, lc, lr] = stepFields();
+        sheet.addRow([wtNo, emitWtName(), sub.number, sName, act, lh, lc, lr, m?.markupPct ?? '', '', '', '', '', '', '']);
+        continue;
+      }
       for (const part of sub.parts) {
+        const mk = markupCell();
+        const [sName, act, lh, lc, lr] = stepFields();
         sheet.addRow([
-          3, '', '', '', '', '',
-          part.partNumber, part.description, part.qty,
-          part.priceSource === 'manual' && part.manualPriceOverride !== undefined ? part.manualPriceOverride : part.unitPrice,
-          part.priceSource,
-          '', '', '', '',
-          computed.lines[part.id] ?? 0, '',
-          part.priceSource === 'manual' ? '' : (part.priceUpdatedAt ?? ''),
-          part.priceLocked ? 'Yes' : '',
+          wtNo, emitWtName(), sub.number, sName, act, lh, lc, lr, mk,
+          part.partNumber, part.pidRef ?? '', part.description, part.qty,
+          effUnitPrice(part), computed.lines[part.id] ?? 0,
         ]);
       }
     }
   }
 
-  sheet.columns.forEach((col) => (col.width = 14));
+  [10, 24, 8, 24, 12, 10, 10, 10, 9, 16, 12, 34, 8, 12, 12].forEach((w, i) => (sheet.getColumn(i + 1).width = w));
 }
 
-/** Reads just the steps from a BOM/step workbook (ignores any Quote Info header). */
-export async function readStepsFromBuffer(buffer: ArrayBuffer): Promise<EquipmentStep[]> {
-  const quote = await readBomWorkbookFromBuffer(buffer);
-  return quote.steps;
+/** Reads just the work tickets/steps from a BOM workbook (ignores any Quote Info header). */
+export async function readStepsFromBuffer(buffer: ArrayBuffer, priceLookup?: PriceLookup): Promise<EquipmentStep[]> {
+  return (await readBomWorkbookFromBuffer(buffer, priceLookup)).steps;
 }
 
-export async function readBomWorkbookFromBuffer(buffer: ArrayBuffer): Promise<Quote> {
+export async function readBomWorkbookFromBuffer(buffer: ArrayBuffer, priceLookup?: PriceLookup): Promise<Quote> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
   const quote = newQuote();
 
-  // Restore quote header fields from the "Quote Info" sheet if present.
   const infoSheet = wb.getWorksheet('Quote Info');
-  if (infoSheet) {
-    infoSheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const field = String(row.getCell(1).value ?? '').trim().toLowerCase();
-      const value = row.getCell(2).value;
-      if (field === 'quote #') quote.quoteNumber = String(value ?? '');
-      else if (field === 'customer') quote.customer = String(value ?? '');
-      else if (field === 'date') quote.date = normalizeDate(value) || quote.date;
-      else if (field === 'default markup %') quote.defaultMarkupPct = numberOrZero(value) || quote.defaultMarkupPct;
-      else if (field === 'template: company name') quote.template.companyName = String(value ?? '');
-      else if (field === 'template: company subtitle') quote.template.companySubtitle = String(value ?? '');
-      else if (field === 'template: header title') quote.template.headerTitle = String(value ?? '');
-      else if (field === 'template: terms text') quote.template.termsText = String(value ?? '');
-      else if (field === 'template: valid days') quote.template.validDays = numberOrZero(value) || quote.template.validDays;
-      else if (field === 'template: show material column') quote.template.showMaterialColumn = isYes(value);
-      else if (field === 'template: show labor column') quote.template.showLaborColumn = isYes(value);
-      else if (field === 'template: show markup column') quote.template.showMarkupColumn = isYes(value);
-      else if (field === 'template: accent color') quote.template.accentColorHex = String(value ?? '') || quote.template.accentColorHex;
-    });
-  }
+  if (infoSheet) readQuoteInfo(infoSheet, quote);
 
-  // The BOM sheet may not be the first worksheet (Quote Info precedes it).
-  const sheet = wb.getWorksheet('BOM') ?? wb.worksheets[wb.worksheets.length - 1];
+  const sheet = wb.getWorksheet('BOM') ?? firstDataSheet(wb);
+  if (!sheet) return quote;
 
-  let currentStep: EquipmentStep | null = null;
-  let currentSub: Subcomponent | null = null;
+  // Detect layout from the header row: original file has "Step #" in col 2 and a
+  // "Work Ticket Name" (really the step name) in col 3; the flat format has
+  // "Work Ticket Name" in col 2 and "Step #" in col 3.
+  const h2 = headerText(sheet, 2);
+  const h3 = headerText(sheet, 3);
+  const isOriginal = h2.includes('step') && h3.includes('name');
 
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return; // header
-    const level = Number(row.getCell(1).value);
-
-    if (level === 1) {
-      const stepNumber = numberOrZero(row.getCell(2).value) || quote.steps.length + 1;
-      const name = String(row.getCell(3).value ?? '').trim();
-      if (!name) return;
-      const groupRaw = String(row.getCell(4).value ?? '').trim();
-      const activityCodeRaw = String(row.getCell(20).value ?? '').trim();
-      const step: EquipmentStep = {
-        ...newStep(name, stepNumber),
-        groupName: groupRaw || undefined,
-        activityCode: activityCodeRaw || undefined,
-      };
-      quote.steps.push(step);
-      currentStep = step;
-      currentSub = null;
-    } else if (level === 2 && currentStep) {
-      const subName = String(row.getCell(6).value ?? '').trim();
-      if (!subName) return;
-      const sub: Subcomponent = {
-        ...newSubcomponent(subName, String(row.getCell(5).value ?? '').trim()),
-        laborHours: numberOrZero(row.getCell(12).value),
-        laborCode: String(row.getCell(13).value ?? 'ASSY'),
-        laborRate: numberOrZero(row.getCell(14).value),
-        markupOverride: numberOrZero(row.getCell(15).value),
-      };
-      currentStep.subcomponents.push(sub);
-      currentSub = sub;
-    } else if (level === 3 && currentSub) {
-      const partNumber = String(row.getCell(7).value ?? '').trim();
-      if (!partNumber) return;
-      const priceSourceRaw = String(row.getCell(11).value ?? 'list').trim();
-      const priceSource = priceSourceRaw === 'manual' ? 'manual' : 'list';
-      const unitPrice = numberOrZero(row.getCell(10).value);
-      const updatedRaw = normalizeDate(row.getCell(18).value);
-      const part: PartLine = {
-        ...newPartLine(),
-        partNumber,
-        description: String(row.getCell(8).value ?? ''),
-        qty: numberOrZero(row.getCell(9).value) || 1,
-        unitPrice,
-        priceSource,
-        manualPriceOverride: priceSource === 'manual' ? unitPrice : undefined,
-        priceUpdatedAt: priceSource === 'manual' ? undefined : updatedRaw || undefined,
-        priceLocked: isYes(row.getCell(19).value),
-      };
-      currentSub.parts.push(part);
-    }
-  });
-
+  quote.steps = isOriginal ? parseOriginalLayout(sheet) : parseFlatLayout(sheet);
+  if (priceLookup) applyPrices(quote, priceLookup);
   return quote;
 }
 
-function numberOrZero(v: unknown): number {
-  const n = typeof v === 'number' ? v : Number(v);
+// ---- Flat layout parser ----
+function parseFlatLayout(sheet: ExcelJS.Worksheet): EquipmentStep[] {
+  const steps: EquipmentStep[] = [];
+  let currentWt: EquipmentStep | null = null;
+  let subMap = new Map<string, Subcomponent>();
+
+  sheet.eachRow((row, i) => {
+    if (i === 1) return;
+    const wtNo = str(row.getCell(1).value);
+    const wtName = str(row.getCell(2).value);
+    const stepNo = str(row.getCell(3).value);
+    if (!wtNo && !stepNo) return;
+
+    if (wtNo && (!currentWt || String(currentWt.stepNumber) !== String(num(wtNo)))) {
+      const existing = steps.find((s) => String(s.stepNumber) === String(num(wtNo)));
+      if (existing) {
+        currentWt = existing;
+      } else {
+        currentWt = { ...newStep(wtName || `Work Ticket ${wtNo}`, num(wtNo)) };
+        steps.push(currentWt);
+        subMap = new Map();
+      }
+    }
+    if (!currentWt) return;
+    if (wtName && !currentWt.name) currentWt.name = wtName;
+
+    if (!stepNo) return;
+    let sub = subMap.get(stepNo);
+    if (!sub) {
+      sub = { ...newSubcomponent(str(row.getCell(4).value) || `Step ${stepNo}`, stepNo) };
+      const activity = str(row.getCell(5).value);
+      if (activity) sub.activityCode = activity;
+      sub.laborHours = num(row.getCell(6).value);
+      sub.laborCode = str(row.getCell(7).value) || 'ASSY';
+      sub.laborRate = num(row.getCell(8).value);
+      const mk = str(row.getCell(9).value);
+      if (mk !== '') sub.markupOverride = num(mk);
+      subMap.set(stepNo, sub);
+      currentWt.subcomponents.push(sub);
+    }
+    const pn = str(row.getCell(10).value);
+    if (pn) sub.parts.push(makePart(pn, str(row.getCell(11).value), str(row.getCell(12).value), num(row.getCell(13).value), num(row.getCell(14).value)));
+  });
+
+  return steps;
+}
+
+// ---- Original header-row layout parser (the "Vessel BOM 7-10" file) ----
+function parseOriginalLayout(sheet: ExcelJS.Worksheet): EquipmentStep[] {
+  const steps: EquipmentStep[] = [];
+  let currentWt: EquipmentStep | null = null;
+  let subMap = new Map<string, Subcomponent>();
+
+  const ensureSub = (stepNo: string, name?: string): Subcomponent | null => {
+    if (!currentWt || !stepNo) return null;
+    let sub = subMap.get(stepNo);
+    if (!sub) {
+      sub = { ...newSubcomponent(name || `Step ${stepNo}`, stepNo), activityCode: 'DFLT' };
+      subMap.set(stepNo, sub);
+      currentWt.subcomponents.push(sub);
+    } else if (name && (!sub.name || sub.name.startsWith('Step '))) {
+      sub.name = name;
+    }
+    return sub;
+  };
+
+  sheet.eachRow((row, i) => {
+    if (i === 1) return;
+    const wtNo = str(row.getCell(1).value);
+    const stepHdr = str(row.getCell(2).value); // Step # on header rows
+    const stepName = str(row.getCell(3).value); // step name on header rows
+    const stepPart = str(row.getCell(4).value); // Step # on part rows
+    const pn = str(row.getCell(5).value);
+    if (!wtNo && !stepHdr && !pn) return;
+
+    if (wtNo && (!currentWt || String(currentWt.stepNumber) !== String(num(wtNo)))) {
+      currentWt = { ...newStep(`Work Ticket ${wtNo}`, num(wtNo)) };
+      steps.push(currentWt);
+      subMap = new Map();
+    }
+    if (stepHdr && !pn) {
+      ensureSub(stepHdr, stepName);
+      return;
+    }
+    if (pn) {
+      const sub = ensureSub(stepPart);
+      if (sub) sub.parts.push(makePart(pn, str(row.getCell(6).value), str(row.getCell(7).value), num(row.getCell(8).value)));
+    }
+  });
+
+  return steps;
+}
+
+function makePart(partNumber: string, pidRef: string, description: string, qty: number, unitPrice = 0): PartLine {
+  const part: PartLine = { ...newPartLine(), partNumber, description, qty: qty || 1, unitPrice, priceSource: unitPrice > 0 ? 'list' : 'list' };
+  if (pidRef) part.pidRef = pidRef;
+  return part;
+}
+
+/** Prices every part from the list; parts not found are flagged for manual input. */
+function applyPrices(quote: Quote, lookup: PriceLookup): void {
+  for (const wt of quote.steps) {
+    for (const sub of wt.subcomponents) {
+      for (const part of sub.parts) {
+        if (part.unitPrice > 0) continue; // price came from the file
+        const info = lookup(part.partNumber);
+        if (info) {
+          part.unitPrice = info.unitPrice;
+          part.priceSource = 'list';
+          part.priceUpdatedAt = info.lastUpdated;
+          if (!part.description && info.description) part.description = info.description;
+        } else {
+          part.priceSource = 'list';
+          part.requiresInput = true;
+        }
+      }
+    }
+  }
+}
+
+function readQuoteInfo(infoSheet: ExcelJS.Worksheet, quote: Quote): void {
+  infoSheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const field = str(row.getCell(1).value).toLowerCase();
+    const value = row.getCell(2).value;
+    if (field === 'quote #') quote.quoteNumber = String(value ?? '');
+    else if (field === 'customer') quote.customer = String(value ?? '');
+    else if (field === 'date') quote.date = normalizeDate(value) || quote.date;
+    else if (field === 'default markup %') quote.defaultMarkupPct = num(value) || quote.defaultMarkupPct;
+    else if (field === 'template: company name') quote.template.companyName = String(value ?? '');
+    else if (field === 'template: company subtitle') quote.template.companySubtitle = String(value ?? '');
+    else if (field === 'template: header title') quote.template.headerTitle = String(value ?? '');
+    else if (field === 'template: terms text') quote.template.termsText = String(value ?? '');
+    else if (field === 'template: valid days') quote.template.validDays = num(value) || quote.template.validDays;
+    else if (field === 'template: show material column') quote.template.showMaterialColumn = isYes(value);
+    else if (field === 'template: show labor column') quote.template.showLaborColumn = isYes(value);
+    else if (field === 'template: show markup column') quote.template.showMarkupColumn = isYes(value);
+    else if (field === 'template: accent color') quote.template.accentColorHex = String(value ?? '') || quote.template.accentColorHex;
+  });
+}
+
+function firstDataSheet(wb: ExcelJS.Workbook): ExcelJS.Worksheet | undefined {
+  return wb.worksheets.find((w) => w.name !== 'Quote Info') ?? wb.worksheets[0];
+}
+function headerText(sheet: ExcelJS.Worksheet, col: number): string {
+  return str(sheet.getRow(1).getCell(col).value).toLowerCase();
+}
+function cellPrimitive(v: unknown): unknown {
+  if (v == null) return '';
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if ('result' in o) return o.result;
+    if ('text' in o) return o.text;
+    if ('richText' in o && Array.isArray(o.richText)) return (o.richText as { text?: string }[]).map((r) => r.text ?? '').join('');
+    return '';
+  }
+  return v;
+}
+function str(v: unknown): string {
+  return String(cellPrimitive(v) ?? '').trim();
+}
+function num(v: unknown): number {
+  const p = cellPrimitive(v);
+  const n = typeof p === 'number' ? p : Number(p);
   return Number.isFinite(n) ? n : 0;
 }
-
 function isYes(v: unknown): boolean {
-  const s = String(v ?? '').trim().toLowerCase();
+  const s = String(cellPrimitive(v) ?? '').trim().toLowerCase();
   return s === 'yes' || s === 'true' || s === '1';
 }
-
-/** Returns a YYYY-MM-DD string from a Date or string cell value, or '' if not parseable. */
 function normalizeDate(v: unknown): string {
-  if (v instanceof Date && !isNaN(v.getTime())) {
-    return v.toISOString().slice(0, 10);
-  }
-  const s = String(v ?? '').trim();
+  if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 10);
+  const s = String(cellPrimitive(v) ?? '').trim();
   if (!s) return '';
   const d = new Date(s);
   return isNaN(d.getTime()) ? s : d.toISOString().slice(0, 10);
