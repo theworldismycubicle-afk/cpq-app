@@ -362,11 +362,28 @@ table.parts-table .lock-btn.locked { opacity: 1; }
   background: #1f2a3c;
   color: white;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 14px;
   font-size: 16px;
   font-weight: 700;
 }
+.grand-total-savemsg {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7fd1a3;
+}
+.grand-total-save {
+  background: #2d6a4f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.grand-total-save:hover { background: #36815f; }
 
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);

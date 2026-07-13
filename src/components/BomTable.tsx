@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 import { useUiStore } from '../store/uiStore';
 import { StepCard } from './StepCard';
 import { quoteGrandTotal, groupStepTotals, formatCurrency } from '../../shared/calculations';
 import { readStepsFromBuffer } from '../lib/excelBom';
+import { saveQuoteToLibrary } from '../lib/idb';
 import { pickFile } from '../lib/browserFileIO';
 
 export function BomTable() {
@@ -11,6 +13,17 @@ export function BomTable() {
   const appendSteps = useQuoteStore((s) => s.appendSteps);
   const collapseAll = useUiStore((s) => s.collapseAll);
   const expandAll = useUiStore((s) => s.expandAll);
+  const [saveMsg, setSaveMsg] = useState('');
+
+  const handleSaveQuote = async () => {
+    try {
+      const rec = await saveQuoteToLibrary(quote);
+      setSaveMsg(`Saved "${rec.quoteNumber || '(no number)'}"`);
+    } catch {
+      setSaveMsg('Save failed');
+    }
+    setTimeout(() => setSaveMsg(''), 2500);
+  };
 
   const handleCollapseAll = () => {
     const stepIds = quote.steps.map((st) => st.id);
@@ -68,6 +81,8 @@ export function BomTable() {
       <div className="grand-total-bar">
         <span>Grand Total:</span>
         <span>{formatCurrency(quoteGrandTotal(quote))}</span>
+        {saveMsg && <span className="grand-total-savemsg">{saveMsg}</span>}
+        <button className="grand-total-save" onClick={handleSaveQuote}>💾 Save Quote</button>
       </div>
     </>
   );
