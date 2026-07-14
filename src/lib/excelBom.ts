@@ -86,6 +86,54 @@ export async function writeStepsBuffer(steps: EquipmentStep[], computed: Compute
   return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
+/** A blank-ish import template with an Instructions sheet + example rows in the flat format. */
+export async function writeBomTemplateBuffer(): Promise<ArrayBuffer> {
+  const wb = new ExcelJS.Workbook();
+
+  const info = wb.addWorksheet('Instructions');
+  info.addRow(['CPQ — BOM Import Template']);
+  info.getRow(1).font = { bold: true, size: 14 };
+  const notes: [string, string][] = [
+    ['', ''],
+    ['How it works', 'One row per part. Fill the "BOM" sheet and load it with Import BOM.'],
+    ['Work Ticket #', 'Job/order number (e.g. 1). Repeat on every row of that work ticket. Becomes the top-level "Work Ticket".'],
+    ['Work Ticket Name', 'Optional name; only needs to appear once (the work ticket\'s first row).'],
+    ['Step #', 'ERP step/operation number (e.g. 112, 114). Repeat on every part row of that step.'],
+    ['Step Name', 'Name of the step (e.g. "H2S P&ID"). Only needs to appear once per step (its first row).'],
+    ['Activity Code', 'ERP activity code for the step: DFLT for material, or a labor code (e.g. 031). Put on the step\'s first row.'],
+    ['Labor Hours / Code / Rate', 'Optional labor for the step, on its first row. Leave blank for material-only steps.'],
+    ['Markup %', 'Optional per-step markup override. Blank = use the quote default markup.'],
+    ['Part Number', 'The part. Priced automatically from your price list on import.'],
+    ['P&ID Ref', 'Optional P&ID tag (e.g. VB-302).'],
+    ['Description', 'Optional; falls back to the price-list description if blank.'],
+    ['Qty', 'Quantity of the part for this step.'],
+    ['Unit Price / Ext Price', 'LEAVE BLANK on import — these are priced from your price list. (Filled in on export.)'],
+    ['', ''],
+    ['Grouping', 'Rows are grouped by Work Ticket # + Step #. Row order does not matter as long as those two columns are filled on every row.'],
+    ['Labor-only step', 'A step with labor but no parts: fill the step fields and leave Part Number/Qty blank (see Step 031 below).'],
+  ];
+  notes.forEach((r) => info.addRow(r));
+  info.getColumn(1).width = 28;
+  info.getColumn(2).width = 96;
+
+  const bom = wb.addWorksheet('BOM');
+  bom.addRow(FLAT_HEADERS);
+  bom.getRow(1).font = { bold: true };
+  const ex: (string | number)[][] = [
+    // WT#, WT Name, Step#, Step Name, Activity, LaborHrs, LaborCode, LaborRate, Markup%, PN, P&ID, Desc, Qty, Unit, Ext
+    ['001', "H2S System 8'x16' 304SS", '112', 'H2S P&ID', 'DFLT', '', '', '', '', 'PSV-1146', '', '8" 94040 Spring Loaded PSV', 2, '', ''],
+    ['001', '', '112', '', '', '', '', '', '', 'VB-1024', 'VB-302', '2" Sharpe SS Threaded Ball Valve', 2, '', ''],
+    ['001', '', '114', "H2S Vessel #1 8'Øx16' 304SS", 'DFLT', '', '', '', '', 'HEAD-0096', '', '96" OD ASME F&D Head', 2, '', ''],
+    ['001', '', '114', '', '', '', '', '', '', 'PIPE-1011', '', '6" Sch 10S Weld Pipe', 5, '', ''],
+    ['001', '', '124', 'Media', 'DFLT', '', '', '', '', 'MEDIA-1000', '', 'UniH2S Media', 10, '', ''],
+    ['001', '', '031', 'H2S Vessel Fab', '031', 250, '031', 35, '', '', '', '', '', '', ''], // labor-only step
+  ];
+  ex.forEach((r) => bom.addRow(r));
+  [10, 24, 8, 26, 12, 10, 10, 10, 9, 16, 12, 34, 8, 12, 12].forEach((w, i) => (bom.getColumn(i + 1).width = w));
+
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+}
+
 function writeBomSheet(wb: ExcelJS.Workbook, steps: EquipmentStep[], computed: ComputedQuote): void {
   const sheet = wb.addWorksheet('BOM');
   sheet.addRow(FLAT_HEADERS);

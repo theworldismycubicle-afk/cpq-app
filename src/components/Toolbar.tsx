@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 import { usePriceListStore } from '../store/priceListStore';
 import { pickFile, downloadBlob } from '../lib/browserFileIO';
-import { writeBomWorkbookBuffer, readBomWorkbookFromBuffer, writeStepSummaryBuffer } from '../lib/excelBom';
+import { writeBomWorkbookBuffer, readBomWorkbookFromBuffer, writeStepSummaryBuffer, writeBomTemplateBuffer } from '../lib/excelBom';
 import { readPriceListFromBuffer } from '../lib/excelPriceList';
 import { buildQuotePdf } from '../lib/pdfQuote';
 import { saveQuoteToLibrary } from '../lib/idb';
@@ -94,6 +94,12 @@ export function Toolbar({
     setStatus(`Downloaded ${fileName}`);
   };
 
+  const handleBomTemplate = async () => {
+    const buffer = await writeBomTemplateBuffer();
+    downloadBlob(buffer, 'CPQ-BOM-Import-Template.xlsx', XLSX_MIME);
+    setStatus('Downloaded BOM import template');
+  };
+
   const handleExportStepSummary = async () => {
     const buffer = await writeStepSummaryBuffer(quote.steps, await api.computeQuote(quote));
     const fileName = `${quote.quoteNumber || 'quote'}-step-summary.xlsx`;
@@ -131,6 +137,7 @@ export function Toolbar({
       <SideGroup title="Build BOM" icon="⚙" open={open.build} onToggle={() => toggle('build')}>
         <button className="side-btn accent-green" onClick={onOpenAssembler}>⚙ BOM Assembler</button>
         <button className="side-btn" onClick={handleImportBom}>⬆ Import BOM</button>
+        <button className="side-btn" onClick={handleBomTemplate}>📄 BOM Import Template</button>
         <button className="side-btn" onClick={handleExportBom}>⬇ Export BOM</button>
         <button className="side-btn" onClick={handleExportStepSummary}>⬇ Step Summary</button>
       </SideGroup>
