@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 import { usePriceListStore } from '../store/priceListStore';
 import { pickFile, downloadBlob } from '../lib/browserFileIO';
+import { useLaborRatesStore } from '../store/laborRatesStore';
 import { writeBomWorkbookBuffer, readBomWorkbookFromBuffer, writeStepSummaryBuffer, writeBomTemplateBuffer } from '../lib/excelBom';
-import { readPriceListFromBuffer } from '../lib/excelPriceList';
+import { readPriceListFromBuffer, writePriceListTemplateBuffer } from '../lib/excelPriceList';
+import { readLaborRatesFromBuffer, writeLaborRatesTemplateBuffer } from '../lib/excelLaborRates';
 import { buildQuotePdf } from '../lib/pdfQuote';
 import { saveQuoteToLibrary } from '../lib/idb';
 import { api } from '../lib/api';
@@ -23,7 +25,7 @@ interface Props {
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const PDF_MIME = 'application/pdf';
 
-type GroupKey = 'quote' | 'build' | 'data';
+type GroupKey = 'quote' | 'build' | 'import' | 'data';
 
 export function Toolbar({
   onPriceListResult,
@@ -41,12 +43,13 @@ export function Toolbar({
   const mergePriceListEntries = usePriceListStore((s) => s.mergeEntries);
   const lookupPrice = usePriceListStore((s) => s.lookup);
   const storedPartCount = usePriceListStore((s) => s.entries.length);
+  const mergeLaborRates = useLaborRatesStore((s) => s.mergeRates);
   const priceLookup = (pn: string) => {
     const e = lookupPrice(pn);
     return e ? { unitPrice: e.unitPrice, description: e.description, lastUpdated: e.lastUpdated } : undefined;
   };
   const [status, setStatus] = useState('');
-  const [open, setOpen] = useState<Record<GroupKey, boolean>>({ quote: true, build: true, data: true });
+  const [open, setOpen] = useState<Record<GroupKey, boolean>>({ quote: true, build: true, import: true, data: true });
 
   const toggle = (k: GroupKey) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
@@ -107,7 +110,7 @@ export function Toolbar({
     setStatus(`Downloaded ${fileName}`);
   };
 
-  // ---- Data actions ----
+  // ---- Import actions ----
   const handleImportPriceList = async () => {
     const file = await pickFile('.xlsx');
     if (!file) return;
@@ -117,6 +120,24 @@ export function Toolbar({
     const summary = applyPriceList(entries);
     onPriceListResult({ fileName: file.name, ...summary });
     setStatus(`Applied price list ${file.name}`);
+  };
+
+  const handlePriceListTemplate = async () => {
+    downloadBlob(await writePriceListTemplateBuffer(), 'CPQ-Price-List-Template.xlsx', XLSX_MIME);
+    setStatus('Downloaded price list template');
+  };
+
+  const handleImportLaborRates = async () => {
+    const file = await pickFile('.xlsx');
+    if (!file) return;
+    const rates = await readLaborRatesFromBuffer(await file.arrayBuffer());
+    const { addedCount, updatedCount } = mergeLaborRates(rates);
+    setStatus(`Labor rates: ${addedCount} added, ${updatedCount} updated`);
+  };
+
+  const handleLaborRatesTemplate = async () => {
+    downloadBlob(await writeLaborRatesTemplateBuffer(), 'CPQ-Labor-Rates-Template.xlsx', XLSX_MIME);
+    setStatus('Downloaded labor rates template');
   };
 
   return (
@@ -136,14 +157,17 @@ export function Toolbar({
 
       <SideGroup title="Build BOM" icon="⚙" open={open.build} onToggle={() => toggle('build')}>
         <button className="side-btn accent-green" onClick={onOpenAssembler}>⚙ BOM Assembler</button>
-        <button className="side-btn" onClick={handleImportBom}>⬆ Import BOM</button>
-        <button className="side-btn" onClick={handleBomTemplate}>📄 BOM Import Template</button>
         <button className="side-btn" onClick={handleExportBom}>⬇ Export BOM</button>
         <button className="side-btn" onClick={handleExportStepSummary}>⬇ Step Summary</button>
       </SideGroup>
 
+      <SideGroup title="Import" icon="⬆" open={open.import} onToggle={() => toggle('import')}>
+        <ImportRow label="BOM" onImport={handleImportBom} onTemplate={handleBomTemplate} />
+        <ImportRow label="Price List" onImport={handleImportPriceList} onTemplate={handlePriceListTemplate} />
+        <ImportRow label="Labor Rates" onImport={handleImportLaborRates} onTemplate={handleLaborRatesTemplate} />
+      </SideGroup>
+
       <SideGroup title="Data" icon="🗄" open={open.data} onToggle={() => toggle('data')}>
-        <button className="side-btn" onClick={handleImportPriceList}>⬆ Import Price List</button>
         <button className="side-btn" onClick={onOpenPartsList}>📋 Parts List</button>
         <button className="side-btn" onClick={onOpenLaborRates}>👷 Labor Codes / Rates</button>
         <button className="side-btn" onClick={onOpenLaborSummary}>Σ Labor Summary</button>
@@ -155,6 +179,18 @@ export function Toolbar({
         {status && <div className="status status-msg">{status}</div>}
       </div>
     </nav>
+  );
+}
+
+function ImportRow({ label, onImport, onTemplate }: { label: string; onImport: () => void; onTemplate: () => void }) {
+  return (
+    <div className="import-row">
+      <span className="import-row-label">{label}</span>
+      <div className="import-row-btns">
+        <button className="import-btn" onClick={onImport}>Import</button>
+        <button className="import-btn ghost" title={`Download the ${label} import template`} onClick={onTemplate}>Template ↓</button>
+      </div>
+    </div>
   );
 }
 

@@ -93,6 +93,37 @@ body {
 .side-btn.accent-green { color: #a7e8c6; }
 .side-btn.accent-green:hover { background: #24503b; }
 
+.import-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px 8px;
+}
+.import-row-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9fb1c9;
+}
+.import-row-btns { display: flex; gap: 6px; }
+.import-btn {
+  flex: 1;
+  background: #2d3f59;
+  color: #dbe4f0;
+  border: none;
+  padding: 6px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.import-btn:hover { background: #3c5478; }
+.import-btn.ghost {
+  background: transparent;
+  color: #9fb1c9;
+  border: 1px solid #3a4c68;
+}
+.import-btn.ghost:hover { background: #2a3852; color: #cfdbec; }
+
 .sidebar-foot {
   margin-top: auto;
   padding: 12px 14px;
