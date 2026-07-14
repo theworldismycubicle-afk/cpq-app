@@ -3,26 +3,29 @@ import { prisma } from '../db.ts';
 
 export const laborRatesRouter = Router();
 
+// The DB column is `description`; the app calls it `activity`. Map at the API boundary.
+const toApi = (r: { code: string; description: string; rate: number }) => ({ code: r.code, activity: r.description, rate: r.rate });
+
 /** GET /api/labor-rates — all rates, code-sorted. */
 laborRatesRouter.get('/', async (_req, res) => {
   const rates = await prisma.laborRate.findMany({ orderBy: { code: 'asc' } });
-  res.json(rates);
+  res.json(rates.map(toApi));
 });
 
 /** POST /api/labor-rates — upsert one rate by code. */
 laborRatesRouter.post('/', async (req, res) => {
-  const { code, description = '', rate = 0 } = req.body ?? {};
+  const { code, activity = '', rate = 0 } = req.body ?? {};
   if (!code || typeof code !== 'string') {
     res.status(400).json({ error: 'code is required' });
     return;
   }
-  const data = { description, rate: Number(rate) || 0 };
+  const data = { description: activity, rate: Number(rate) || 0 };
   const saved = await prisma.laborRate.upsert({
     where: { code },
     create: { code, ...data },
     update: data,
   });
-  res.json(saved);
+  res.json(toApi(saved));
 });
 
 /** DELETE /api/labor-rates/:code */
@@ -45,12 +48,12 @@ laborRatesRouter.put('/', async (req, res) => {
     prisma.laborRate.deleteMany(),
     ...rates
       .filter((r: { code?: string }) => String(r.code ?? '').trim())
-      .map((r: { code: string; description?: string; rate?: number }) =>
+      .map((r: { code: string; activity?: string; rate?: number }) =>
         prisma.laborRate.create({
-          data: { code: r.code, description: r.description ?? '', rate: Number(r.rate) || 0 },
+          data: { code: r.code, description: r.activity ?? '', rate: Number(r.rate) || 0 },
         }),
       ),
   ]);
   const saved = await prisma.laborRate.findMany({ orderBy: { code: 'asc' } });
-  res.json(saved);
+  res.json(saved.map(toApi));
 });

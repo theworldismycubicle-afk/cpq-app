@@ -15,6 +15,7 @@ interface LaborRatesState {
   removeRate: (index: number) => void;
   resetToDefaults: () => void;
   rateForCode: (code: string) => number | undefined;
+  activityForCode: (code: string) => string | undefined;
 }
 
 export const useLaborRatesStore = create<LaborRatesState>()((set, get) => ({
@@ -52,7 +53,7 @@ export const useLaborRatesStore = create<LaborRatesState>()((set, get) => ({
     return { updatedCount, addedCount };
   },
 
-  addRate: () => set((s) => ({ rates: [...s.rates, { code: '', description: '', rate: 0 }] })),
+  addRate: () => set((s) => ({ rates: [...s.rates, { code: '', activity: '', rate: 0 }] })),
 
   updateRate: (index, patch) =>
     set((s) => ({ rates: s.rates.map((r, i) => (i === index ? { ...r, ...patch } : r)) })),
@@ -62,6 +63,8 @@ export const useLaborRatesStore = create<LaborRatesState>()((set, get) => ({
   resetToDefaults: () => set({ rates: DEFAULT_LABOR_RATES }),
 
   rateForCode: (code) => get().rates.find((r) => r.code === code)?.rate,
+
+  activityForCode: (code) => get().rates.find((r) => r.code === code)?.activity,
 }));
 
 // Persist changes to the API (debounced), but only after the initial hydration.

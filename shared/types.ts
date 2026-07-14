@@ -84,16 +84,17 @@ export interface Quote {
 
 export interface LaborRateEntry {
   code: string;
-  description: string;
+  /** Human-readable activity name for this labor code (e.g. "Assembly"). */
+  activity: string;
   rate: number;
 }
 
 export const DEFAULT_LABOR_RATES: LaborRateEntry[] = [
-  { code: 'WELD', description: 'Welding/Fabrication', rate: 85 },
-  { code: 'ASSY', description: 'Assembly', rate: 65 },
-  { code: 'MACH', description: 'Machining', rate: 95 },
-  { code: 'INSP', description: 'Inspection/QC', rate: 70 },
-  { code: 'POL', description: 'Polishing/Finishing', rate: 75 },
+  { code: 'WELD', activity: 'Welding/Fabrication', rate: 85 },
+  { code: 'ASSY', activity: 'Assembly', rate: 65 },
+  { code: 'MACH', activity: 'Machining', rate: 95 },
+  { code: 'INSP', activity: 'Inspection/QC', rate: 70 },
+  { code: 'POL', activity: 'Polishing/Finishing', rate: 75 },
 ];
 
 export function newPartLine(): PartLine {

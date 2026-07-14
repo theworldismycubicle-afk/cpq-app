@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 import type { LaborRateEntry } from '../../shared/types';
 
 const CODE_HEADERS = ['labor code', 'code'];
-const DESCRIPTION_HEADERS = ['description', 'desc'];
+const ACTIVITY_HEADERS = ['activity', 'description', 'desc'];
 const RATE_HEADERS = ['rate', 'labor rate', '$/hr', 'rate per hour'];
 
 /** Import template with example labor codes/rates. */
@@ -14,7 +14,7 @@ export async function writeLaborRatesTemplateBuffer(): Promise<ArrayBuffer> {
   [
     ['', ''],
     ['Labor Code', 'Short activity code (e.g. 031, ASSY, WELD). Required; matched by code on import.'],
-    ['Description', 'What the code means (optional).'],
+    ['Activity', 'What the code means, e.g. "H2S Vessel Fab" (optional).'],
     ['Rate', 'Hourly rate in $/hr (required).'],
     ['', ''],
     ['Note', 'Import merges by Labor Code. Fill the "Labor Rates" sheet and load with Import Labor Rates.'],
@@ -23,7 +23,7 @@ export async function writeLaborRatesTemplateBuffer(): Promise<ArrayBuffer> {
   info.getColumn(2).width = 90;
 
   const sheet = wb.addWorksheet('Labor Rates');
-  sheet.addRow(['Labor Code', 'Description', 'Rate']);
+  sheet.addRow(['Labor Code', 'Activity', 'Rate']);
   sheet.getRow(1).font = { bold: true };
   const ex: (string | number)[][] = [
     ['020', 'Engineering', 52.5],
@@ -49,16 +49,16 @@ export async function readLaborRatesFromBuffer(buffer: ArrayBuffer): Promise<Lab
   let rateCol = -1;
 
   for (const ws of wb.worksheets) {
-    let code = -1, desc = -1, rate = -1;
+    let code = -1, act = -1, rate = -1;
     ws.getRow(1).eachCell((cell, colNumber) => {
       const text = String(cell.value ?? '').trim().toLowerCase();
       if (CODE_HEADERS.includes(text)) code = colNumber;
-      else if (DESCRIPTION_HEADERS.includes(text)) desc = colNumber;
+      else if (ACTIVITY_HEADERS.includes(text)) act = colNumber;
       else if (RATE_HEADERS.includes(text)) rate = colNumber;
     });
     if (code !== -1 && rate !== -1) {
       sheet = ws;
-      codeCol = code; descriptionCol = desc; rateCol = rate;
+      codeCol = code; descriptionCol = act; rateCol = rate;
       break;
     }
   }
@@ -76,7 +76,7 @@ export async function readLaborRatesFromBuffer(buffer: ArrayBuffer): Promise<Lab
     const rate = typeof rateRaw === 'number' ? rateRaw : Number(rateRaw);
     entries.push({
       code,
-      description: descriptionCol !== -1 ? String(row.getCell(descriptionCol).value ?? '') : '',
+      activity: descriptionCol !== -1 ? String(row.getCell(descriptionCol).value ?? '') : '',
       rate: Number.isFinite(rate) ? rate : 0,
     });
   });

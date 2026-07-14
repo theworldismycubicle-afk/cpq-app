@@ -61,7 +61,7 @@ export function LaborRatesModal({ open, onClose }: Props) {
               <thead>
                 <tr>
                   <th style={{ width: '22%' }}>Labor Code</th>
-                  <th style={{ width: '52%' }}>Description</th>
+                  <th style={{ width: '52%' }}>Activity</th>
                   <th style={{ width: '20%' }}>Rate ($/hr)</th>
                   <th style={{ width: '6%' }}></th>
                 </tr>
@@ -79,8 +79,8 @@ export function LaborRatesModal({ open, onClose }: Props) {
                     <td>
                       <input
                         type="text"
-                        value={rate.description}
-                        onChange={(e) => updateRate(index, { description: e.target.value })}
+                        value={rate.activity}
+                        onChange={(e) => updateRate(index, { activity: e.target.value })}
                       />
                     </td>
                     <td>

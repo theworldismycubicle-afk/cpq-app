@@ -25,6 +25,9 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
   const markup = sub.markupOverride !== undefined ? sub.markupOverride : defaultMarkupPct;
   const isOverridden = sub.markupOverride !== undefined;
 
+  // Activity + rate are driven by the selected labor code (static from the labor table).
+  const laborActivity = laborRates.find((r) => r.code === sub.laborCode)?.activity ?? '';
+
   return (
     <div className="sub-card">
       <div className="sub-header">
@@ -50,17 +53,6 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
           value={sub.name}
           onChange={(e) => updateSubcomponent(stepId, sub.id, { name: e.target.value })}
         />
-
-        <div className="field">
-          Activity
-          <input
-            type="text"
-            className="sub-number"
-            placeholder="DFLT"
-            value={sub.activityCode ?? ''}
-            onChange={(e) => updateSubcomponent(stepId, sub.id, { activityCode: e.target.value })}
-          />
-        </div>
 
         <div className="field">
           Labor Hrs
@@ -89,12 +81,20 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
           </select>
         </div>
 
+        <div className="field field-wide">
+          Activity
+          <span className="field-ro" title={laborActivity}>{laborActivity || '—'}</span>
+        </div>
+
         <div className="field">
           Rate $/hr
           <input
             type="number"
+            className="field-locked"
             value={sub.laborRate}
-            onChange={(e) => updateSubcomponent(stepId, sub.id, { laborRate: Number(e.target.value) })}
+            readOnly
+            tabIndex={-1}
+            title="Rate is set by the labor code (edit it in Labor Codes / Rates)"
           />
         </div>
 

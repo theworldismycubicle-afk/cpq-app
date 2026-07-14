@@ -292,6 +292,24 @@ table.parts-list-table .current-quote-row { background: #eef7f1; }
   border-radius: 4px;
   font-size: 12px;
 }
+.sub-header .field-ro {
+  min-width: 96px;
+  max-width: 170px;
+  font-size: 12px;
+  color: #333;
+  background: #eef1f6;
+  border: 1px solid #dde2ea;
+  border-radius: 4px;
+  padding: 4px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sub-header input.field-locked {
+  background: #eef1f6;
+  color: #667;
+  cursor: default;
+}
 .sub-header .totals { margin-left: auto; font-size: 13px; font-weight: 600; color: #1f2a3c; }
 .sub-header .remove-btn { background: #c0392b; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
 
