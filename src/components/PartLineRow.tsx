@@ -31,6 +31,20 @@ export function PartLineRow({ stepId, subId, part }: Props) {
         manualPriceOverride: undefined,
         pendingListPrice: undefined,
         priceUpdatedAt: match.lastUpdated,
+        requiresInput: false,
+      });
+    } else if (part.priceSource === 'list') {
+      // Part number is no longer in the list: clear the values carried over from the
+      // previous (listed) part so they aren't accidentally kept against a new part.
+      updatePartLine(stepId, subId, part.id, {
+        partNumber: value,
+        description: '',
+        unitPrice: 0,
+        priceSource: 'manual',
+        manualPriceOverride: undefined,
+        pendingListPrice: undefined,
+        priceUpdatedAt: undefined,
+        requiresInput: true,
       });
     } else {
       updatePartLine(stepId, subId, part.id, { partNumber: value });
