@@ -173,7 +173,7 @@ export const useQuoteStore = create<QuoteState>((set) => ({
             const newPrice = match.unitPrice;
             if (p.priceSource === 'list') {
               updated++;
-              return { ...p, unitPrice: newPrice, priceUpdatedAt: match.lastUpdated, pendingListPrice: undefined };
+              return { ...p, unitPrice: newPrice, priceUpdatedAt: match.lastUpdated, pendingListPrice: undefined, requiresInput: false };
             } else {
               if (newPrice !== p.unitPrice) {
                 pendingManual++;
@@ -226,6 +226,7 @@ export const useQuoteStore = create<QuoteState>((set) => ({
               manualPriceOverride: undefined,
               pendingListPrice: undefined,
               priceUpdatedAt: match.lastUpdated,
+              requiresInput: false, // found in the list — no longer needs manual input
             };
           }),
         })),
