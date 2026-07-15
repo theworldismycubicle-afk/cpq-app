@@ -64,8 +64,9 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
         </div>
 
         <div className="field">
-          Labor Code
+          Activity
           <select
+            className="activity-select"
             value={sub.laborCode}
             onChange={(e) => {
               const code = e.target.value;
@@ -75,15 +76,15 @@ export function SubcomponentRow({ stepId, sub, defaultMarkupPct }: Props) {
           >
             {laborRates.map((r) => (
               <option key={r.code} value={r.code}>
-                {r.code}
+                {r.activity || r.code}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="field field-wide">
-          Activity
-          <span className="field-ro" title={laborActivity}>{laborActivity || '—'}</span>
+        <div className="field">
+          Code
+          <span className="field-ro code-ro" title={laborActivity}>{sub.laborCode || '—'}</span>
         </div>
 
         <div className="field">
